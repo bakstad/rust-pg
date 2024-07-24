@@ -1,8 +1,9 @@
+use diesel::deserialize::FromSqlRow;
 use diesel::pg::Pg;
 use diesel::prelude::*;
 use diesel::query_builder::*;
 use diesel::query_dsl::methods::LoadQuery;
-use diesel::sql_types::BigInt;
+use diesel::sql_types::{BigInt, SqlType};
 
 pub trait Paginate: Sized {
     fn paginate(self, page: i64) -> Paginated<Self>;
@@ -12,7 +13,7 @@ pub trait PaginateWithTotal: Sized {
     fn paginate_with_total(self, page: i64) -> PaginatedWithTotal<Self>;
 }
 
-impl<T> Paginate for T {
+impl<T: Query> Paginate for T {
     fn paginate(self, page: i64) -> Paginated<Self> {
         Paginated {
             query: self,
@@ -23,7 +24,7 @@ impl<T> Paginate for T {
     }
 }
 
-impl<T> PaginateWithTotal for T {
+impl<T: Query> PaginateWithTotal for T {
     fn paginate_with_total(self, page: i64) -> PaginatedWithTotal<Self> {
         PaginatedWithTotal {
             query: self,
@@ -59,6 +60,11 @@ pub struct PaginatedResult<T> {
     pub total_pages: i64,
 }
 
+
+trait CountedTuple {
+
+}
+
 impl<T> PaginatedWithTotal<T> {
     pub fn per_page(self, per_page: i64) -> Self {
         PaginatedWithTotal {
@@ -68,6 +74,7 @@ impl<T> PaginatedWithTotal<T> {
         }
     }
 
+    // TODO: How to make this generic over all pairs, currently it only supports returning one datatype
     pub fn load_and_count_pages<'a, U>(self, conn: &mut PgConnection) -> QueryResult<PaginatedResult<U>>
     where
         Self: LoadQuery<'a, PgConnection, (U, i64)>,

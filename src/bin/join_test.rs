@@ -102,6 +102,43 @@ fn pagination_testing(conn: &mut PgConnection) -> Result<(), Error> {
         println!("books_pagination: {:?}", books_pagination);
     }
 
+
+    println!("###################################");
+    println!("###################################");
+
+    // Paginate with join and return total
+    let mut page = 1;
+
+    loop {
+        let query = books::table
+            .inner_join(pages::table)
+            .select((Book::as_select(), Page::as_select()))
+            .paginate(page)
+            .per_page(3);
+
+        page += 1;
+
+        // println!("{}", debug_query::<Pg, _>(&query));
+
+        let books_pagination = query
+            .load::<(Book,Page)>(conn)?;
+
+        if books_pagination.is_empty() {
+            break;
+        }
+
+        println!("books_pages_pagination: {:?}", books_pagination);
+    }
+
+
+    println!("###################################");
+    println!("###################################");
+
+    let count = books::table
+        .count()
+        .get_result::<i64>(conn)?;
+        println!("count: {:?}", count);
+
     Ok(())
 }
 
