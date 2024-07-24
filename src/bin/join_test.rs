@@ -10,7 +10,7 @@ use rust_pg::{
         pages,
     },
 };
-use rust_pg::pagination::Paginate;
+use rust_pg::pagination::{Paginate, PaginateWithTotal};
 
 use self::models::*;
 
@@ -52,6 +52,34 @@ struct AuthorBooks<'a> {
 
 fn pagination_testing(conn: &mut PgConnection) -> Result<(), Error> {
 
+    // Paginate and return total
+    let mut page = 1;
+
+    loop {
+        let query = books::table
+            .select(Book::as_select())
+            .paginate_with_total(page)
+            .per_page(3);
+
+        page += 1;
+
+        // println!("{}", debug_query::<Pg, _>(&query));
+
+        let books_pagination = query
+            .load_and_count_pages(conn)?;
+
+        if books_pagination.data.is_empty() {
+            break;
+        }
+
+        println!("books_pagination_with_total: {:?}", books_pagination);
+    }
+
+
+    println!("###################################");
+    println!("###################################");
+
+    // Paginate without counting total
     let mut page = 1;
 
     loop {
@@ -65,9 +93,9 @@ fn pagination_testing(conn: &mut PgConnection) -> Result<(), Error> {
         // println!("{}", debug_query::<Pg, _>(&query));
 
         let books_pagination = query
-            .load_and_count_pages(conn)?;
+            .load(conn)?;
 
-        if books_pagination.data.is_empty() {
+        if books_pagination.is_empty() {
             break;
         }
 

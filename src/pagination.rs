@@ -8,9 +8,24 @@ pub trait Paginate: Sized {
     fn paginate(self, page: i64) -> Paginated<Self>;
 }
 
+pub trait PaginateWithTotal: Sized {
+    fn paginate_with_total(self, page: i64) -> PaginatedWithTotal<Self>;
+}
+
 impl<T> Paginate for T {
     fn paginate(self, page: i64) -> Paginated<Self> {
         Paginated {
+            query: self,
+            per_page: DEFAULT_PER_PAGE,
+            page,
+            offset: (page - 1) * DEFAULT_PER_PAGE,
+        }
+    }
+}
+
+impl<T> PaginateWithTotal for T {
+    fn paginate_with_total(self, page: i64) -> PaginatedWithTotal<Self> {
+        PaginatedWithTotal {
             query: self,
             per_page: DEFAULT_PER_PAGE,
             page,
@@ -29,6 +44,14 @@ pub struct Paginated<T> {
     offset: i64,
 }
 
+#[derive(Debug, Clone, Copy, QueryId)]
+pub struct PaginatedWithTotal<T> {
+    query: T,
+    page: i64,
+    per_page: i64,
+    offset: i64,
+}
+
 #[derive(Debug)]
 pub struct PaginatedResult<T> {
     pub data: Vec<T>,
@@ -36,9 +59,9 @@ pub struct PaginatedResult<T> {
     pub total_pages: i64,
 }
 
-impl<T> Paginated<T> {
+impl<T> PaginatedWithTotal<T> {
     pub fn per_page(self, per_page: i64) -> Self {
-        Paginated {
+        PaginatedWithTotal {
             per_page,
             offset: (self.page - 1) * per_page,
             ..self
@@ -62,13 +85,42 @@ impl<T> Paginated<T> {
     }
 }
 
+impl<T> Paginated<T> {
+    pub fn per_page(self, per_page: i64) -> Self {
+        Paginated {
+            per_page,
+            offset: (self.page - 1) * per_page,
+            ..self
+        }
+    }
+}
+
 impl<T: Query> Query for Paginated<T> {
+    type SqlType = T::SqlType;
+}
+
+impl<T: Query> Query for PaginatedWithTotal<T> {
     type SqlType = (T::SqlType, BigInt);
 }
 
 impl<T> RunQueryDsl<PgConnection> for Paginated<T> {}
+impl<T> RunQueryDsl<PgConnection> for PaginatedWithTotal<T> {}
 
 impl<T> QueryFragment<Pg> for Paginated<T>
+where
+    T: QueryFragment<Pg>,
+{
+    fn walk_ast<'b>(&'b self, mut out: AstPass<'_, 'b, Pg>) -> QueryResult<()> {
+        self.query.walk_ast(out.reborrow())?;
+        out.push_sql(" LIMIT ");
+        out.push_bind_param::<BigInt, _>(&self.per_page)?;
+        out.push_sql(" OFFSET ");
+        out.push_bind_param::<BigInt, _>(&self.offset)?;
+        Ok(())
+    }
+}
+
+impl<T> QueryFragment<Pg> for PaginatedWithTotal<T>
 where
     T: QueryFragment<Pg>,
 {
