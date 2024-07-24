@@ -25,8 +25,10 @@ fn main() -> Result<(), Error> {
 
     nested_join(conn)?;
 
-
-    delete_all(conn)?;
+    println!("-----------------");
+    play_with_joins(conn)?;
+    println!("-----------------");
+    // delete_all(conn)?;
 
     Ok(())
 }
@@ -41,6 +43,32 @@ struct AddressAuthors<'a> {
 struct AuthorBooks<'a> {
     author: &'a Author,
     books: Vec<&'a Book>,
+}
+
+fn play_with_joins(conn: &mut PgConnection) -> Result<(), Error> {
+    let books_pages = books::table
+        .inner_join(pages::table)
+        .filter(pages::content.similar_to("den%"))
+        .order(pages::id.asc())
+        .select((Book::as_select(), Page::as_select()))
+        .load::<(Book, Page)>(conn)?;
+
+    println!("books_pages: {:?}", books_pages);
+
+    // select * from books b
+    // join pages p on b.id = p.book_id
+    // join books_authors ba on ba.book_id = b.id
+    // join authors a on a.id = ba.author_id;
+
+    let books_pages_authors = books::table
+        .inner_join(pages::table)
+        .inner_join(books_authors::table.inner_join(authors::table))
+        .select((Book::as_select(), Page::as_select(), Author::as_select()))
+        .load::<(Book, Page, Author)>(conn)?;
+
+    println!("books_pages_authors: {:?}", books_pages_authors);
+
+    Ok(())
 }
 
 fn nested_join(conn: &mut PgConnection) -> Result<(), Error> {
@@ -321,10 +349,16 @@ fn setup_data(conn: &mut PgConnection) -> Result<(), Error> {
     let pippi = new_book(conn, "Pippi Långstrump")?;
     new_books_author(conn, pippi.id, astrid_lindgren.id)?;
 
+    new_page(conn, 1, "pipp1", pippi.id)?;
+    new_page(conn, 2, "pipp1", pippi.id)?;
+
     // now that both have a single book, let's add a third book, an imaginary collaboration
     let collaboration = new_book(conn, "Pippi and Momo")?;
     new_books_author(conn, collaboration.id, astrid_lindgren.id)?;
     new_books_author(conn, collaboration.id, michael_ende.id)?;
+
+    new_page(conn, 1, "momopipp1", collaboration.id)?;
+    new_page(conn, 2, "momopipp2", collaboration.id)?;
 
     Ok(())
 }
