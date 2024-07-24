@@ -11,11 +11,12 @@ use rust_pg::{
     },
     *,
 };
+use rust_pg::pagination::Paginate;
 
 fn main() -> Result<(), Error> {
     let conn = &mut establish_connection();
 
-    setup_data(conn)?;
+    // setup_data(conn)?;
 
     one_to_n_relations(conn)?;
     joins(conn)?;
@@ -28,6 +29,9 @@ fn main() -> Result<(), Error> {
     println!("-----------------");
     play_with_joins(conn)?;
     println!("-----------------");
+    pagination_testing(conn)?;
+    println!("-----------------");
+
     // delete_all(conn)?;
 
     Ok(())
@@ -43,6 +47,33 @@ struct AddressAuthors<'a> {
 struct AuthorBooks<'a> {
     author: &'a Author,
     books: Vec<&'a Book>,
+}
+
+fn pagination_testing(conn: &mut PgConnection) -> Result<(), Error> {
+
+    let mut page = 1;
+
+    loop {
+        let query = books::table
+            .select(Book::as_select())
+            .paginate(page)
+            .per_page(3);
+
+        page += 1;
+
+        // println!("{}", debug_query::<Pg, _>(&query));
+
+        let books_pagination = query
+            .load_and_count_pages(conn)?;
+
+        if books_pagination.0.is_empty() {
+            break;
+        }
+
+        println!("books_pagination: {:?}", books_pagination);
+    }
+
+    Ok(())
 }
 
 fn play_with_joins(conn: &mut PgConnection) -> Result<(), Error> {
@@ -359,6 +390,10 @@ fn setup_data(conn: &mut PgConnection) -> Result<(), Error> {
 
     new_page(conn, 1, "momopipp1", collaboration.id)?;
     new_page(conn, 2, "momopipp2", collaboration.id)?;
+
+    for i in 1..20 {
+        let momo = new_book(conn, &format!("Book {}", i))?;
+    }
 
     Ok(())
 }

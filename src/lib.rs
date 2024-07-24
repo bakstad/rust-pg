@@ -2,6 +2,7 @@ use std::env;
 
 pub mod models;
 pub mod schema;
+pub mod pagination;
 
 use diesel::{Connection, PgConnection};
 use dotenvy::dotenv;
@@ -13,3 +14,5 @@ pub fn establish_connection() -> PgConnection {
     PgConnection::establish(&database_url)
         .unwrap_or_else(|_| panic!("Error connecting to {}", database_url))
 }
+
+
