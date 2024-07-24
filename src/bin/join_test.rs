@@ -66,7 +66,7 @@ fn pagination_testing(conn: &mut PgConnection) -> Result<(), Error> {
         let books_pagination = query
             .load_and_count_pages(conn)?;
 
-        if books_pagination.0.is_empty() {
+        if books_pagination.data.is_empty() {
             break;
         }
 
