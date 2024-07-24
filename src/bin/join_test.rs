@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use self::models::*;
+use diesel::query_dsl::InternalJoinDsl;
 use diesel::{debug_query, delete, pg::Pg, prelude::*, result::Error};
 use rust_pg::{
     schema::{
@@ -23,6 +24,7 @@ fn main() -> Result<(), Error> {
     println!("-----------------");
 
     nested_join(conn)?;
+
 
     delete_all(conn)?;
 
@@ -102,6 +104,11 @@ fn delete_all(conn: &mut PgConnection) -> Result<(), Error> {
     diesel::delete(books::table).execute(conn)?;
     diesel::delete(address::table).execute(conn)?;
     diesel::delete(authors::table).execute(conn)?;
+
+    let x = books::table
+        .inner_join(pages::table)
+        .select((Book::as_select(), Page::as_select()))
+        .get_results::<(Book, Page)>(conn)?;
 
     Ok(())
 }
