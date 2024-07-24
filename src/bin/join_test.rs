@@ -1,17 +1,18 @@
 use std::collections::HashMap;
 
-use self::models::*;
-use diesel::query_dsl::InternalJoinDsl;
-use diesel::{debug_query, delete, pg::Pg, prelude::*, result::Error};
+use diesel::{debug_query, pg::Pg, prelude::*, result::Error};
+
 use rust_pg::{
+    *,
     schema::{
         address, authors, books,
         books_authors::{self},
         pages,
     },
-    *,
 };
 use rust_pg::pagination::Paginate;
+
+use self::models::*;
 
 fn main() -> Result<(), Error> {
     let conn = &mut establish_connection();
@@ -164,7 +165,7 @@ fn delete_all(conn: &mut PgConnection) -> Result<(), Error> {
     diesel::delete(address::table).execute(conn)?;
     diesel::delete(authors::table).execute(conn)?;
 
-    let x = books::table
+    let _ = books::table
         .inner_join(pages::table)
         .select((Book::as_select(), Page::as_select()))
         .get_results::<(Book, Page)>(conn)?;
@@ -392,7 +393,7 @@ fn setup_data(conn: &mut PgConnection) -> Result<(), Error> {
     new_page(conn, 2, "momopipp2", collaboration.id)?;
 
     for i in 1..20 {
-        let momo = new_book(conn, &format!("Book {}", i))?;
+        new_book(conn, &format!("Book {}", i))?;
     }
 
     Ok(())
