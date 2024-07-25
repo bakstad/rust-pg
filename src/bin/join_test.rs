@@ -1,23 +1,22 @@
 use std::collections::HashMap;
 
-use diesel::expression::{AsExpression, SqlLiteral, UncheckedBind};
-use diesel::internal::derives::as_expression::Bound;
-use diesel::sql_types::{Bool, Integer};
 use diesel::{debug_query, pg::Pg, prelude::*, result::Error};
+use diesel::sql_types::{Bool, Integer};
 use rand::Rng;
 
-use self::models::*;
-use rust_pg::debug_query::DebugQuery;
-use rust_pg::pagination::{Paginate, PaginateWithTotal};
-use rust_pg::schema::reports;
 use rust_pg::{
+    *,
     schema::{
         address, authors, books,
         books_authors::{self},
         items, pages,
     },
-    *,
 };
+use rust_pg::debug_query::DebugQuery;
+use rust_pg::pagination::{Paginate, PaginateWithTotal};
+use rust_pg::schema::reports;
+
+use self::models::*;
 
 fn main() -> Result<(), Error> {
     let conn = &mut establish_connection();
@@ -157,7 +156,7 @@ fn pagination_testing(conn: &mut PgConnection) -> Result<(), Error> {
             .select((books::all_columns, pages::all_columns))
             .paginate_with_total(page)
             .per_page(3)
-            // .debug_query()
+            .debug_query()
             .load_and_count_pages::<(Book, Page)>(conn)?;
 
         if result.data.is_empty() {

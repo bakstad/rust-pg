@@ -1,8 +1,7 @@
-use diesel::dsl;
 use diesel::pg::Pg;
 use diesel::prelude::*;
 use diesel::query_builder::*;
-use diesel::query_dsl::methods::{LoadQuery, OrderDsl};
+use diesel::query_dsl::methods::LoadQuery;
 use diesel::sql_types::BigInt;
 
 pub trait Paginate: Sized {
@@ -154,31 +153,5 @@ where
         out.push_sql(" OFFSET ");
         out.push_bind_param::<BigInt, _>(&self.common.offset)?;
         Ok(())
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct PaginationOptions {
-    after: Option<String>,
-    pub per_page: u32,
-}
-
-pub struct PaginatedQuery<T, O> {
-    query: T,
-    order_clause: O,
-    // options: PaginationOptions,
-}
-
-pub trait PaginateWithCursor: Sized {
-    fn paginate_with_cursor<O>(self, cursor: O) -> PaginatedQuery<dsl::Order<Self, O>, O>
-    where
-        Self: OrderDsl<O>,
-        O: Clone + diesel::Expression,
-    {
-        PaginatedQuery {
-            query: self.order(cursor.clone()),
-            order_clause: cursor,
-            // options: PaginationOptions::new(params)?,
-        }
     }
 }
