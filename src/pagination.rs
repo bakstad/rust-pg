@@ -15,6 +15,8 @@ pub trait PaginateWithTotal: Sized {
 
 impl<T: Query> Paginate for T {
     fn paginate(self, page: i64) -> Paginated<Self> {
+        let page = std::cmp::max(page, 1);
+
         Paginated {
             query: self,
             per_page: DEFAULT_PER_PAGE,
@@ -26,6 +28,8 @@ impl<T: Query> Paginate for T {
 
 impl<T: Query> PaginateWithTotal for T {
     fn paginate_with_total(self, page: i64) -> PaginatedWithTotal<Self> {
+        let page = std::cmp::max(page, 1);
+
         PaginatedWithTotal {
             query: self,
             per_page: DEFAULT_PER_PAGE,
@@ -60,13 +64,14 @@ pub struct PaginatedResult<T> {
     pub total_pages: i64,
 }
 
-
-trait CountedTuple {
-
-}
+trait CountedTuple {}
 
 impl<T> PaginatedWithTotal<T> {
+    const MAX_PER_PAGE: i64 = 25;
+
     pub fn per_page(self, per_page: i64) -> Self {
+        let per_page = std::cmp::min(per_page, Self::MAX_PER_PAGE);
+
         PaginatedWithTotal {
             per_page,
             offset: (self.page - 1) * per_page,
@@ -76,7 +81,10 @@ impl<T> PaginatedWithTotal<T> {
 
     // TODO: How to make this generic over all pairs, currently it only supports returning one datatype
     //   --> Seems to work with <tables>::all_columns, but not Table::as_select() for some reason
-    pub fn load_and_count_pages<'a, U>(self, conn: &mut PgConnection) -> QueryResult<PaginatedResult<U>>
+    pub fn load_and_count_pages<'a, U>(
+        self,
+        conn: &mut PgConnection,
+    ) -> QueryResult<PaginatedResult<U>>
     where
         Self: LoadQuery<'a, PgConnection, (U, i64)>,
     {
