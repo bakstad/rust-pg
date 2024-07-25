@@ -190,15 +190,14 @@ fn pagination_testing(conn: &mut PgConnection) -> Result<(), Error> {
 
     loop {
         let cursor_filter =
-            diesel::dsl::sql::<Bool>("((pages.page_number, books.id, pages.id) < (")
+            diesel::dsl::sql::<Bool>("(pages.page_number, books.id, pages.id) < (")
                 .bind::<Integer, _>(cursor.page_number)
                 .sql(", ")
                 .bind::<Integer, _>(cursor.book_id)
                 .sql(", ")
                 .bind::<Integer, _>(cursor.page_id)
                 .sql(") or ")
-                .bind::<Bool, _>(cursor.first)
-                .sql(")");
+                .bind::<Bool, _>(cursor.first);
         // create_cursor(&mut cursor);
 
         let result = books::table
