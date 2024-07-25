@@ -75,6 +75,7 @@ impl<T> PaginatedWithTotal<T> {
     }
 
     // TODO: How to make this generic over all pairs, currently it only supports returning one datatype
+    //   --> Seems to work with <tables>::all_columns, but not Table::as_select() for some reason
     pub fn load_and_count_pages<'a, U>(self, conn: &mut PgConnection) -> QueryResult<PaginatedResult<U>>
     where
         Self: LoadQuery<'a, PgConnection, (U, i64)>,

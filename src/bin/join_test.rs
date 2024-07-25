@@ -35,7 +35,7 @@ fn main() -> Result<(), Error> {
     pagination_testing(conn)?;
     println!("-----------------");
 
-    reports_testing(conn)?;
+    // reports_testing(conn)?;
     println!("-----------------");
 
     delete_all(conn)?;
@@ -143,6 +143,40 @@ fn pagination_testing(conn: &mut PgConnection) -> Result<(), Error> {
         .count()
         .get_result::<i64>(conn)?;
         println!("count: {:?}", count);
+
+
+    println!("###################################");
+    println!("###################################");
+
+
+    // Paginate with join and return total
+    let mut page = 1;
+
+    loop {
+        let query = books::table
+            .inner_join(pages::table)
+            .order_by(pages::page_number.desc())
+            .select((books::all_columns, pages::all_columns))
+            .paginate_with_total(page)
+            .per_page(3);
+
+        // println!("{}", debug_query::<Pg, _>(&query));
+
+        let result = query
+            .load_and_count_pages::<(Book,Page)>(conn)?;
+
+        if result.data.is_empty() {
+            break;
+        }
+
+        println!("Page {}/{}", page, result.total_pages);
+        for (book, page) in result.data {
+            println!("Book({}) - Page({}) - page_nr: {}", book.id, page.id, page.page_number);
+        }
+
+        page += 1;
+    }
+
 
     Ok(())
 }
