@@ -1,11 +1,11 @@
 use std::env;
 
+use diesel::{Connection, PgConnection};
+use dotenvy::dotenv;
+
 pub mod models;
 pub mod schema;
 pub mod pagination;
-
-use diesel::{Connection, PgConnection};
-use dotenvy::dotenv;
 
 pub fn establish_connection() -> PgConnection {
     dotenv().ok();

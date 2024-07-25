@@ -1,6 +1,7 @@
 use diesel::prelude::*;
 
-use crate::schema::{address, authors, books_authors, posts, items, reports};
+use crate::schema::{address, authors, books_authors, items, posts, reports};
+use crate::schema::{books, pages};
 
 #[derive(Debug, Queryable, Selectable, Identifiable, AsChangeset)]
 #[diesel(table_name = crate::schema::posts)]
@@ -18,8 +19,6 @@ pub struct NewPost<'a> {
     pub title: &'a str,
     pub body: &'a str,
 }
-
-use crate::schema::{books, pages};
 
 #[derive(Queryable, Identifiable, Selectable, Debug, Hash, Eq, PartialEq, Clone)]
 #[diesel(table_name = books)]

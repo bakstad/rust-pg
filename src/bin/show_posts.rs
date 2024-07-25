@@ -1,6 +1,8 @@
-use self::models::*;
 use diesel::prelude::*;
+
 use rust_pg::*;
+
+use self::models::*;
 
 fn main() {
     use self::schema::posts::dsl::*;

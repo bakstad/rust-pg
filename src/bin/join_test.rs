@@ -2,16 +2,18 @@ use std::collections::HashMap;
 
 use diesel::{debug_query, pg::Pg, prelude::*, result::Error};
 use rand::Rng;
+
 use rust_pg::{
     *,
     schema::{
-        address, authors, books, items,
-        books_authors::{self},
+        address, authors, books, books_authors::{self},
+        items,
         pages,
     },
 };
 use rust_pg::pagination::{Paginate, PaginateWithTotal};
 use rust_pg::schema::reports;
+
 use self::models::*;
 
 fn main() -> Result<(), Error> {
