@@ -18,10 +18,12 @@ impl<T: Query> Paginate for T {
         let page = std::cmp::max(page, 1);
 
         Paginated {
-            query: self,
-            per_page: DEFAULT_PER_PAGE,
-            page,
-            offset: (page - 1) * DEFAULT_PER_PAGE,
+            common: Common {
+                query: self,
+                per_page: DEFAULT_PER_PAGE,
+                page,
+                offset: (page - 1) * DEFAULT_PER_PAGE,
+            },
         }
     }
 }
@@ -31,10 +33,12 @@ impl<T: Query> PaginateWithTotal for T {
         let page = std::cmp::max(page, 1);
 
         PaginatedWithTotal {
-            query: self,
-            per_page: DEFAULT_PER_PAGE,
-            page,
-            offset: (page - 1) * DEFAULT_PER_PAGE,
+            common: Common {
+                query: self,
+                per_page: DEFAULT_PER_PAGE,
+                page,
+                offset: (page - 1) * DEFAULT_PER_PAGE,
+            },
         }
     }
 }
@@ -42,7 +46,7 @@ impl<T: Query> PaginateWithTotal for T {
 const DEFAULT_PER_PAGE: i64 = 10;
 
 #[derive(Debug, Clone, Copy, QueryId)]
-pub struct Paginated<T> {
+struct Common<T> {
     query: T,
     page: i64,
     per_page: i64,
@@ -50,11 +54,13 @@ pub struct Paginated<T> {
 }
 
 #[derive(Debug, Clone, Copy, QueryId)]
+pub struct Paginated<T> {
+    common: Common<T>,
+}
+
+#[derive(Debug, Clone, Copy, QueryId)]
 pub struct PaginatedWithTotal<T> {
-    query: T,
-    page: i64,
-    per_page: i64,
-    offset: i64,
+    common: Common<T>,
 }
 
 #[derive(Debug)]
@@ -67,15 +73,15 @@ pub struct PaginatedResult<T> {
 trait CountedTuple {}
 
 impl<T> PaginatedWithTotal<T> {
-    const MAX_PER_PAGE: i64 = 25;
-
     pub fn per_page(self, per_page: i64) -> Self {
-        let per_page = std::cmp::min(per_page, Self::MAX_PER_PAGE);
+        let per_page = std::cmp::min(per_page, DEFAULT_PER_PAGE);
 
         PaginatedWithTotal {
-            per_page,
-            offset: (self.page - 1) * per_page,
-            ..self
+            common: Common {
+                per_page,
+                offset: (self.common.page - 1) * per_page,
+                ..self.common
+            },
         }
     }
 
@@ -88,7 +94,7 @@ impl<T> PaginatedWithTotal<T> {
     where
         Self: LoadQuery<'a, PgConnection, (U, i64)>,
     {
-        let per_page = self.per_page;
+        let per_page = self.common.per_page;
         let results = self.load::<(U, i64)>(conn)?;
         let total = results.first().map(|x| x.1).unwrap_or(0);
         let records = results.into_iter().map(|x| x.0).collect();
@@ -104,9 +110,11 @@ impl<T> PaginatedWithTotal<T> {
 impl<T> Paginated<T> {
     pub fn per_page(self, per_page: i64) -> Self {
         Paginated {
-            per_page,
-            offset: (self.page - 1) * per_page,
-            ..self
+            common: Common {
+                per_page,
+                offset: (self.common.page - 1) * per_page,
+                ..self.common
+            },
         }
     }
 }
@@ -127,11 +135,11 @@ where
     T: QueryFragment<Pg>,
 {
     fn walk_ast<'b>(&'b self, mut out: AstPass<'_, 'b, Pg>) -> QueryResult<()> {
-        self.query.walk_ast(out.reborrow())?;
+        self.common.query.walk_ast(out.reborrow())?;
         out.push_sql(" LIMIT ");
-        out.push_bind_param::<BigInt, _>(&self.per_page)?;
+        out.push_bind_param::<BigInt, _>(&self.common.per_page)?;
         out.push_sql(" OFFSET ");
-        out.push_bind_param::<BigInt, _>(&self.offset)?;
+        out.push_bind_param::<BigInt, _>(&self.common.offset)?;
         Ok(())
     }
 }
@@ -142,11 +150,11 @@ where
 {
     fn walk_ast<'b>(&'b self, mut out: AstPass<'_, 'b, Pg>) -> QueryResult<()> {
         out.push_sql("SELECT *, COUNT(*) OVER () FROM (");
-        self.query.walk_ast(out.reborrow())?;
+        self.common.query.walk_ast(out.reborrow())?;
         out.push_sql(") t LIMIT ");
-        out.push_bind_param::<BigInt, _>(&self.per_page)?;
+        out.push_bind_param::<BigInt, _>(&self.common.per_page)?;
         out.push_sql(" OFFSET ");
-        out.push_bind_param::<BigInt, _>(&self.offset)?;
+        out.push_bind_param::<BigInt, _>(&self.common.offset)?;
         Ok(())
     }
 }
