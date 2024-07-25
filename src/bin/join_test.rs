@@ -40,7 +40,7 @@ fn main() -> Result<(), Error> {
     pagination_testing(conn)?;
     println!("-----------------");
 
-    // reports_testing(conn)?;
+    reports_testing(conn)?;
     println!("-----------------");
 
     delete_all(conn)?;
@@ -255,20 +255,20 @@ fn reports_testing(conn: &mut PgConnection) -> Result<(), Error> {
 
     let mut page = 1;
     loop {
-        let reports = reports::table
+        let result = reports::table
             .inner_join(items::table)
             .order_by((items::num_plays.desc(), reports::id.desc()))
-            .select((Report::as_select(), Item::as_select()))
-            .paginate(page)
-            .load::<(Report, Item)>(conn)?;
+            .select((reports::all_columns, items::all_columns))
+            .paginate_with_total(page)
+            .load_and_count_pages::<(Report, Item)>(conn)?;
 
-        if reports.is_empty() {
+        if result.data.is_empty() {
             break;
         }
 
-        println!("Page {}:", page);
+        println!("Page {}/{}:", page, result.total_pages);
 
-        for (report, item) in reports {
+        for (report, item) in result.data {
             println!(
                 "report {}, item: {}, plays: {}",
                 report.id, item.id, item.num_plays
