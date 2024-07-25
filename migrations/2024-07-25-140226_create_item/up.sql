@@ -1,5 +1,5 @@
 create table items (
-    id BIGSERIAL PRIMARY KEY,
-    title TEXT,
-    num_plays INTEGER default 0
+    id SERIAL PRIMARY KEY,
+    title TEXT NOT NULL,
+    num_plays INTEGER NOT NULL default 0
 )

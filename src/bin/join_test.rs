@@ -1,23 +1,25 @@
 use std::collections::HashMap;
 
 use diesel::{debug_query, pg::Pg, prelude::*, result::Error};
-
+use rand::Rng;
 use rust_pg::{
     *,
     schema::{
-        address, authors, books,
+        address, authors, books, items,
         books_authors::{self},
         pages,
     },
 };
 use rust_pg::pagination::{Paginate, PaginateWithTotal};
-
+use rust_pg::schema::reports;
 use self::models::*;
 
 fn main() -> Result<(), Error> {
     let conn = &mut establish_connection();
 
-    // setup_data(conn)?;
+    setup_data(conn)?;
+
+    setup_items(conn)?;
 
     one_to_n_relations(conn)?;
     joins(conn)?;
@@ -33,7 +35,10 @@ fn main() -> Result<(), Error> {
     pagination_testing(conn)?;
     println!("-----------------");
 
-    // delete_all(conn)?;
+    reports_testing(conn)?;
+    println!("-----------------");
+
+    delete_all(conn)?;
 
     Ok(())
 }
@@ -142,6 +147,38 @@ fn pagination_testing(conn: &mut PgConnection) -> Result<(), Error> {
     Ok(())
 }
 
+fn reports_testing(conn: &mut PgConnection) -> Result<(), Error> {
+
+    println!("##########################");
+    println!("# REPORTS");
+    println!("##########################");
+
+    let mut page = 1;
+    loop {
+        let reports = reports::table
+            .inner_join(items::table)
+            .order_by((items::num_plays.desc(), reports::id.desc()))
+            .select((Report::as_select(), Item::as_select()))
+            .paginate(page)
+            .load::<(Report, Item)>(conn)?;
+
+        if reports.is_empty() {
+            break;
+        }
+
+        println!("Page {}:", page);
+
+        for (report, item) in reports {
+            println!("report {}, item: {}, plays: {}", report.id, item.id, item.num_plays);
+        }
+        println!();
+
+        page +=1;
+    }
+
+    Ok(())
+}
+
 fn play_with_joins(conn: &mut PgConnection) -> Result<(), Error> {
     let books_pages = books::table
         .inner_join(pages::table)
@@ -230,10 +267,8 @@ fn delete_all(conn: &mut PgConnection) -> Result<(), Error> {
     diesel::delete(address::table).execute(conn)?;
     diesel::delete(authors::table).execute(conn)?;
 
-    let _ = books::table
-        .inner_join(pages::table)
-        .select((Book::as_select(), Page::as_select()))
-        .get_results::<(Book, Page)>(conn)?;
+    diesel::delete(reports::table).execute(conn)?;
+    diesel::delete(items::table).execute(conn)?;
 
     Ok(())
 }
@@ -459,6 +494,43 @@ fn setup_data(conn: &mut PgConnection) -> Result<(), Error> {
 
     for i in 1..20 {
         new_book(conn, &format!("Book {}", i))?;
+    }
+
+    Ok(())
+}
+
+
+fn new_item(conn: &mut PgConnection, title: &str, num_plays: i32) -> Result<Item, Error> {
+    let item = diesel::insert_into(items::table)
+        .values((items::title.eq(title), items::num_plays.eq(num_plays)))
+        .returning(Item::as_returning())
+        .get_result(conn)?;
+
+    Ok(item)
+}
+
+fn new_report(conn: &mut PgConnection, title: &str, item_id: i32) -> Result<Report, Error> {
+    let item = diesel::insert_into(reports::table)
+        .values((reports::title.eq(title), reports::item_id.eq(item_id)))
+        .returning(Report::as_returning())
+        .get_result(conn)?;
+
+    Ok(item)
+}
+
+fn setup_items(conn: &mut PgConnection) -> Result<(), Error> {
+
+    let mut rng = rand::thread_rng();
+
+    for i in 1..100 {
+
+        let num_plays = rng.gen_range(0..1000);
+
+        let item = new_item(conn, &format!("item {}", i), num_plays)?;
+
+        for r in 1..3 {
+            new_report(conn, &format!("report {} - {}", r, item.title), item.id)?;
+        }
     }
 
     Ok(())

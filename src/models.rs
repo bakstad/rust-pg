@@ -1,6 +1,6 @@
 use diesel::prelude::*;
 
-use crate::schema::{address, authors, books_authors, posts};
+use crate::schema::{address, authors, books_authors, posts, items, reports};
 
 #[derive(Debug, Queryable, Selectable, Identifiable, AsChangeset)]
 #[diesel(table_name = crate::schema::posts)]
@@ -62,4 +62,22 @@ pub struct Address {
     pub id: i32,
     pub value: String,
     pub author_id: i32,
+}
+
+#[derive(Queryable, Identifiable, Selectable, Debug, Hash, Eq, PartialEq, Clone)]
+#[diesel(table_name = items)]
+pub struct Item {
+    pub id: i32,
+    pub title: String,
+    pub num_plays: i32,
+}
+
+
+#[derive(Queryable, Selectable, Identifiable, Associations, Debug, PartialEq)]
+#[diesel(belongs_to(Item))]
+#[diesel(table_name = reports)]
+pub struct Report {
+    pub id: i32,
+    pub title: String,
+    pub item_id: i32,
 }

@@ -1,5 +1,5 @@
 create table reports (
-    id BIGSERIAL PRIMARY KEY,
-    title TEXT,
-    item_id BIGINT NOT NULL references items(id)
+    id SERIAL PRIMARY KEY,
+    title TEXT NOT NULL,
+    item_id INT NOT NULL references items(id)
 )

@@ -31,9 +31,9 @@ diesel::table! {
 
 diesel::table! {
     items (id) {
-        id -> Int8,
-        title -> Nullable<Text>,
-        num_plays -> Nullable<Int4>,
+        id -> Int4,
+        title -> Text,
+        num_plays -> Int4,
     }
 }
 
@@ -57,9 +57,9 @@ diesel::table! {
 
 diesel::table! {
     reports (id) {
-        id -> Int8,
-        title -> Nullable<Text>,
-        item_id -> Int8,
+        id -> Int4,
+        title -> Text,
+        item_id -> Int4,
     }
 }
 
