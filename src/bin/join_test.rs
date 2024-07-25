@@ -1,5 +1,8 @@
 use std::collections::HashMap;
 
+use diesel::expression::{AsExpression, SqlLiteral, UncheckedBind};
+use diesel::internal::derives::as_expression::Bound;
+use diesel::sql_types::{Bool, Integer};
 use diesel::{debug_query, pg::Pg, prelude::*, result::Error};
 use rand::Rng;
 
@@ -146,11 +149,15 @@ fn pagination_testing(conn: &mut PgConnection) -> Result<(), Error> {
     loop {
         let result = books::table
             .inner_join(pages::table)
-            .order_by(pages::page_number.desc())
+            .order_by((
+                pages::page_number.desc(),
+                books::id.desc(),
+                pages::id.desc(),
+            ))
             .select((books::all_columns, pages::all_columns))
             .paginate_with_total(page)
             .per_page(3)
-            .debug_query()
+            // .debug_query()
             .load_and_count_pages::<(Book, Page)>(conn)?;
 
         if result.data.is_empty() {
@@ -168,7 +175,78 @@ fn pagination_testing(conn: &mut PgConnection) -> Result<(), Error> {
         page += 1;
     }
 
+    println!("###################################");
+    println!("# Cursor based");
+    println!("###################################");
+
+    // Cursor pagination with join/multiple sort params
+
+    let mut cursor = Cursor {
+        book_id: 0,
+        page_id: 0,
+        page_number: 0,
+        first: true,
+    };
+
+    loop {
+        let cursor_filter =
+            diesel::dsl::sql::<Bool>("((pages.page_number, books.id, pages.id) < (")
+                .bind::<Integer, _>(cursor.page_number)
+                .sql(", ")
+                .bind::<Integer, _>(cursor.book_id)
+                .sql(", ")
+                .bind::<Integer, _>(cursor.page_id)
+                .sql(") or ")
+                .bind::<Bool, _>(cursor.first)
+                .sql(")");
+        // create_cursor(&mut cursor);
+
+        let result = books::table
+            .inner_join(pages::table)
+            .filter(cursor_filter)
+            .order_by((
+                pages::page_number.desc(),
+                books::id.desc(),
+                pages::id.desc(),
+            ))
+            .select((books::all_columns, pages::all_columns))
+            .limit(3)
+            // .debug_query()
+            .load::<(Book, Page)>(conn)?;
+
+        if result.is_empty() {
+            break;
+        }
+
+        let mut next_cursor = Cursor::default();
+        if let Some((last_book, last_page)) = result.last() {
+            next_cursor.book_id = last_book.id;
+            next_cursor.page_id = last_page.id;
+            next_cursor.page_number = last_page.page_number;
+            next_cursor.first = false;
+        }
+
+        println!("cursor:      {:?}", cursor);
+        println!("next_cursor: {:?}", next_cursor);
+        for (book, page) in result {
+            println!(
+                "Book({}) - Page({}) - page_nr: {}",
+                book.id, page.id, page.page_number
+            );
+        }
+
+        cursor = next_cursor;
+    }
+
     Ok(())
+}
+
+#[derive(Debug, Default)]
+struct Cursor {
+    book_id: i32,
+    page_id: i32,
+    page_number: i32,
+    first: bool,
 }
 
 fn reports_testing(conn: &mut PgConnection) -> Result<(), Error> {
