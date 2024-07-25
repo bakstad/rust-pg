@@ -30,6 +30,14 @@ diesel::table! {
 }
 
 diesel::table! {
+    items (id) {
+        id -> Int8,
+        title -> Nullable<Text>,
+        num_plays -> Nullable<Int4>,
+    }
+}
+
+diesel::table! {
     pages (id) {
         id -> Int4,
         page_number -> Int4,
@@ -47,16 +55,27 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    reports (id) {
+        id -> Int8,
+        title -> Nullable<Text>,
+        item_id -> Int8,
+    }
+}
+
 diesel::joinable!(address -> authors (author_id));
 diesel::joinable!(books_authors -> authors (author_id));
 diesel::joinable!(books_authors -> books (book_id));
 diesel::joinable!(pages -> books (book_id));
+diesel::joinable!(reports -> items (item_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     address,
     authors,
     books,
     books_authors,
+    items,
     pages,
     posts,
+    reports,
 );
