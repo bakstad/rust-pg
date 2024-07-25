@@ -3,18 +3,18 @@ use std::collections::HashMap;
 use diesel::{debug_query, pg::Pg, prelude::*, result::Error};
 use rand::Rng;
 
-use rust_pg::{
-    *,
-    schema::{
-        address, authors, books, books_authors::{self},
-        items,
-        pages,
-    },
-};
+use self::models::*;
+use rust_pg::debug_query::DebugQuery;
 use rust_pg::pagination::{Paginate, PaginateWithTotal};
 use rust_pg::schema::reports;
-
-use self::models::*;
+use rust_pg::{
+    schema::{
+        address, authors, books,
+        books_authors::{self},
+        items, pages,
+    },
+    *,
+};
 
 fn main() -> Result<(), Error> {
     let conn = &mut establish_connection();
@@ -58,7 +58,6 @@ struct AuthorBooks<'a> {
 }
 
 fn pagination_testing(conn: &mut PgConnection) -> Result<(), Error> {
-
     // Paginate and return total
     let mut page = 1;
 
@@ -72,8 +71,7 @@ fn pagination_testing(conn: &mut PgConnection) -> Result<(), Error> {
 
         // println!("{}", debug_query::<Pg, _>(&query));
 
-        let books_pagination = query
-            .load_and_count_pages(conn)?;
+        let books_pagination = query.load_and_count_pages(conn)?;
 
         if books_pagination.data.is_empty() {
             break;
@@ -81,7 +79,6 @@ fn pagination_testing(conn: &mut PgConnection) -> Result<(), Error> {
 
         println!("books_pagination_with_total: {:?}", books_pagination);
     }
-
 
     println!("###################################");
     println!("###################################");
@@ -99,8 +96,7 @@ fn pagination_testing(conn: &mut PgConnection) -> Result<(), Error> {
 
         // println!("{}", debug_query::<Pg, _>(&query));
 
-        let books_pagination = query
-            .load(conn)?;
+        let books_pagination = query.load(conn)?;
 
         if books_pagination.is_empty() {
             break;
@@ -108,7 +104,6 @@ fn pagination_testing(conn: &mut PgConnection) -> Result<(), Error> {
 
         println!("books_pagination: {:?}", books_pagination);
     }
-
 
     println!("###################################");
     println!("###################################");
@@ -127,8 +122,7 @@ fn pagination_testing(conn: &mut PgConnection) -> Result<(), Error> {
 
         // println!("{}", debug_query::<Pg, _>(&query));
 
-        let books_pagination = query
-            .load::<(Book,Page)>(conn)?;
+        let books_pagination = query.load::<(Book, Page)>(conn)?;
 
         if books_pagination.is_empty() {
             break;
@@ -137,35 +131,27 @@ fn pagination_testing(conn: &mut PgConnection) -> Result<(), Error> {
         println!("books_pages_pagination: {:?}", books_pagination);
     }
 
-
     println!("###################################");
     println!("###################################");
 
-    let count = books::table
-        .count()
-        .get_result::<i64>(conn)?;
-        println!("count: {:?}", count);
-
+    let count = books::table.count().get_result::<i64>(conn)?;
+    println!("count: {:?}", count);
 
     println!("###################################");
     println!("###################################");
-
 
     // Paginate with join and return total
     let mut page = 1;
 
     loop {
-        let query = books::table
+        let result = books::table
             .inner_join(pages::table)
             .order_by(pages::page_number.desc())
             .select((books::all_columns, pages::all_columns))
             .paginate_with_total(page)
-            .per_page(3);
-
-        // println!("{}", debug_query::<Pg, _>(&query));
-
-        let result = query
-            .load_and_count_pages::<(Book,Page)>(conn)?;
+            .per_page(3)
+            .debug_query()
+            .load_and_count_pages::<(Book, Page)>(conn)?;
 
         if result.data.is_empty() {
             break;
@@ -173,18 +159,19 @@ fn pagination_testing(conn: &mut PgConnection) -> Result<(), Error> {
 
         println!("Page {}/{}", page, result.total_pages);
         for (book, page) in result.data {
-            println!("Book({}) - Page({}) - page_nr: {}", book.id, page.id, page.page_number);
+            println!(
+                "Book({}) - Page({}) - page_nr: {}",
+                book.id, page.id, page.page_number
+            );
         }
 
         page += 1;
     }
 
-
     Ok(())
 }
 
 fn reports_testing(conn: &mut PgConnection) -> Result<(), Error> {
-
     println!("##########################");
     println!("# REPORTS");
     println!("##########################");
@@ -205,11 +192,14 @@ fn reports_testing(conn: &mut PgConnection) -> Result<(), Error> {
         println!("Page {}:", page);
 
         for (report, item) in reports {
-            println!("report {}, item: {}, plays: {}", report.id, item.id, item.num_plays);
+            println!(
+                "report {}, item: {}, plays: {}",
+                report.id, item.id, item.num_plays
+            );
         }
         println!();
 
-        page +=1;
+        page += 1;
     }
 
     Ok(())
@@ -535,7 +525,6 @@ fn setup_data(conn: &mut PgConnection) -> Result<(), Error> {
     Ok(())
 }
 
-
 fn new_item(conn: &mut PgConnection, title: &str, num_plays: i32) -> Result<Item, Error> {
     let item = diesel::insert_into(items::table)
         .values((items::title.eq(title), items::num_plays.eq(num_plays)))
@@ -555,11 +544,9 @@ fn new_report(conn: &mut PgConnection, title: &str, item_id: i32) -> Result<Repo
 }
 
 fn setup_items(conn: &mut PgConnection) -> Result<(), Error> {
-
     let mut rng = rand::thread_rng();
 
     for i in 1..100 {
-
         let num_plays = rng.gen_range(0..1000);
 
         let item = new_item(conn, &format!("item {}", i), num_plays)?;
