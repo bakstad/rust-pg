@@ -372,6 +372,14 @@ fn json_testing(conn: &mut PgConnection) -> Result<(), Error> {
 
     println!("JSON: {:?}", result);
 
+    println!("---------------");
+
+
+    let result = invites::table.select(InviteJson::as_select())
+        .load(conn)?;
+
+    println!("JSON: {:?}", result);
+
     Ok(())
 }
 
@@ -612,8 +620,8 @@ fn setup_data(conn: &mut PgConnection) -> Result<(), Error> {
         new_book(conn, &format!("Book {}", i))?;
     }
 
-    new_invite(conn, "email", serde_json::from_str("{\"name\": \"kjell\"}").unwrap());
-    new_invite(conn, "link", serde_json::from_str("{\"url\": \"http://test.com\"}").unwrap());
+    new_invite(conn, "email", serde_json::from_str("{\"kind\": \"Email\", \"name\": \"kjell\"}").unwrap())?;
+    new_invite(conn, "link", serde_json::from_str("{\"kind\": \"Link\", \"url\": \"http://test.com\"}").unwrap())?;
 
     Ok(())
 }

@@ -7,6 +7,7 @@ pub mod models;
 pub mod schema;
 pub mod pagination;
 pub mod debug_query;
+pub mod diesel_jsonb;
 
 pub fn establish_connection() -> PgConnection {
     dotenv().ok();

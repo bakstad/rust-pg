@@ -1,5 +1,7 @@
+use diesel::{AsExpression, FromSqlRow};
 use diesel::prelude::*;
-
+use serde::{Deserialize, Serialize};
+use crate::diesel_jsonb;
 use crate::schema::{address, authors, books_authors, items, posts, reports};
 use crate::schema::{books, pages};
 
@@ -71,7 +73,6 @@ pub struct Item {
     pub num_plays: i32,
 }
 
-
 #[derive(Queryable, Selectable, Identifiable, Associations, Debug, PartialEq)]
 #[diesel(belongs_to(Item))]
 #[diesel(table_name = reports)]
@@ -89,3 +90,19 @@ pub struct Invite {
     pub kind: String,
     pub json: serde_json::Value,
 }
+
+#[derive(Debug, Queryable, Selectable, Identifiable)]
+#[diesel(table_name = crate::schema::invites)]
+pub struct InviteJson {
+    pub id: i64,
+    pub kind: String,
+    pub json: InviteData,
+}
+
+#[derive(Debug, FromSqlRow, Serialize, Deserialize)]
+#[serde(tag = "kind")]
+pub enum InviteData {
+    Email { name: String },
+    Link { url: String },
+}
+diesel_jsonb!(InviteData);
