@@ -623,6 +623,14 @@ fn setup_data(conn: &mut PgConnection) -> Result<(), Error> {
     new_invite(conn, "email", serde_json::from_str("{\"kind\": \"Email\", \"name\": \"kjell\"}").unwrap())?;
     new_invite(conn, "link", serde_json::from_str("{\"kind\": \"Link\", \"url\": \"http://test.com\"}").unwrap())?;
 
+    let invite = NewInviteJson {
+        kind: "email".to_string(),
+        json: InviteData::Email { name: "ronnie".to_string() },
+    };
+
+    let inserted_invite = new_invite_serde(conn, invite)?;
+    println!("inserted_invite: {:?}", inserted_invite);
+
     Ok(())
 }
 
@@ -654,6 +662,14 @@ fn new_invite(conn: &mut PgConnection, kind: &str, json: serde_json::Value) -> R
     Ok(item)
 }
 
+fn new_invite_serde(conn: &mut PgConnection, new_invite: NewInviteJson) -> Result<InviteJson, Error> {
+    let item = diesel::insert_into(invites::table)
+        .values(new_invite)
+        .returning(InviteJson::as_returning())
+        .get_result(conn)?;
+
+    Ok(item)
+}
 
 fn setup_items(conn: &mut PgConnection) -> Result<(), Error> {
     let mut rng = rand::thread_rng();

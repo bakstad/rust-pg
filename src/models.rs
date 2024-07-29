@@ -99,7 +99,17 @@ pub struct InviteJson {
     pub json: InviteData,
 }
 
-#[derive(Debug, FromSqlRow, Serialize, Deserialize)]
+#[derive(Debug, Insertable)]
+#[diesel(table_name = crate::schema::invites)]
+pub struct NewInviteJson {
+    pub kind: String,
+    pub json: InviteData,
+}
+
+use diesel::pg::sql_types::Jsonb;
+
+#[derive(Debug, AsExpression, FromSqlRow, Serialize, Deserialize)]
+#[diesel(sql_type = Jsonb)]
 #[serde(tag = "kind")]
 pub enum InviteData {
     Email { name: String },
