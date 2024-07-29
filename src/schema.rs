@@ -30,6 +30,14 @@ diesel::table! {
 }
 
 diesel::table! {
+    invites (id) {
+        id -> Int8,
+        kind -> Varchar,
+        json -> Jsonb,
+    }
+}
+
+diesel::table! {
     items (id) {
         id -> Int4,
         title -> Text,
@@ -74,6 +82,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     authors,
     books,
     books_authors,
+    invites,
     items,
     pages,
     posts,

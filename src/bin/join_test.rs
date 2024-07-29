@@ -14,7 +14,7 @@ use rust_pg::{
 };
 use rust_pg::debug_query::DebugQuery;
 use rust_pg::pagination::{Paginate, PaginateWithTotal};
-use rust_pg::schema::reports;
+use rust_pg::schema::{invites, reports};
 
 use self::models::*;
 
@@ -40,6 +40,9 @@ fn main() -> Result<(), Error> {
     println!("-----------------");
 
     reports_testing(conn)?;
+    println!("-----------------");
+
+    json_testing(conn)?;
     println!("-----------------");
 
     delete_all(conn)?;
@@ -362,6 +365,16 @@ fn nested_join(conn: &mut PgConnection) -> Result<(), Error> {
     Ok(())
 }
 
+fn json_testing(conn: &mut PgConnection) -> Result<(), Error> {
+
+    let result = invites::table.select(Invite::as_select())
+        .get_results(conn)?;
+
+    println!("JSON: {:?}", result);
+
+    Ok(())
+}
+
 fn delete_all(conn: &mut PgConnection) -> Result<(), Error> {
     diesel::delete(pages::table).execute(conn)?;
     diesel::delete(books_authors::table).execute(conn)?;
@@ -371,6 +384,7 @@ fn delete_all(conn: &mut PgConnection) -> Result<(), Error> {
 
     diesel::delete(reports::table).execute(conn)?;
     diesel::delete(items::table).execute(conn)?;
+    diesel::delete(invites::table).execute(conn)?;
 
     Ok(())
 }
@@ -598,6 +612,9 @@ fn setup_data(conn: &mut PgConnection) -> Result<(), Error> {
         new_book(conn, &format!("Book {}", i))?;
     }
 
+    new_invite(conn, "email", serde_json::from_str("{\"name\": \"kjell\"}").unwrap());
+    new_invite(conn, "link", serde_json::from_str("{\"url\": \"http://test.com\"}").unwrap());
+
     Ok(())
 }
 
@@ -618,6 +635,17 @@ fn new_report(conn: &mut PgConnection, title: &str, item_id: i32) -> Result<Repo
 
     Ok(item)
 }
+
+
+fn new_invite(conn: &mut PgConnection, kind: &str, json: serde_json::Value) -> Result<Invite, Error> {
+    let item = diesel::insert_into(invites::table)
+        .values((invites::kind.eq(kind), invites::json.eq(json)))
+        .returning(Invite::as_returning())
+        .get_result(conn)?;
+
+    Ok(item)
+}
+
 
 fn setup_items(conn: &mut PgConnection) -> Result<(), Error> {
     let mut rng = rand::thread_rng();

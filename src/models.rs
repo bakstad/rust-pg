@@ -80,3 +80,12 @@ pub struct Report {
     pub title: String,
     pub item_id: i32,
 }
+
+#[derive(Debug, Queryable, Selectable, Identifiable, AsChangeset)]
+#[diesel(table_name = crate::schema::invites)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct Invite {
+    pub id: i64,
+    pub kind: String,
+    pub json: serde_json::Value,
+}
