@@ -5,8 +5,8 @@ use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
 use env_logger::Env;
 use futures_util::FutureExt;
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
-use tokio::time::sleep;
+use tokio::time::Duration;
+use tokio::time::{sleep, Instant};
 
 #[get("/")]
 async fn hello(data: web::Data<AppState>) -> impl Responder {
@@ -86,12 +86,20 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .wrap(Logger::default())
             .wrap_fn(|req, srv| {
-                println!(
-                    "DATADOG: {} {:?}",
+                let start = Instant::now();
+
+                let path = format!(
+                    "{} {}",
                     req.method(),
-                    req.match_pattern()
+                    req.match_pattern().unwrap_or("unknown".to_string())
                 );
-                srv.call(req)
+
+                srv.call(req).map(move |res| {
+                    let dur = Instant::now().duration_since(start);
+
+                    println!("datadog: {} ({:?})", path, dur);
+                    return res;
+                })
             })
             .app_data(app_state.clone())
             .service(hello)
