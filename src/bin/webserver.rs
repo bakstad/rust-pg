@@ -27,6 +27,8 @@ async fn test(path: Path<(u32, String)>) -> impl Responder {
 async fn test2(path: Path<TestPathInfo>) -> impl Responder {
     let TestPathInfo { user_id, name } = path.into_inner();
 
+    sleep(Duration::from_millis(100)).await;
+
     HttpResponse::Ok().body(format!("-- User: {user_id}, name: {name}"))
 }
 
