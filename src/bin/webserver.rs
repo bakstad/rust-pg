@@ -1,8 +1,10 @@
+use actix_web::dev::Service;
+use actix_web::middleware::Logger;
 use actix_web::web::{Json, Path, Query};
 use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
-use diesel::query_dsl::InternalJoinDsl;
-use diesel::IntoSql;
-use serde::Deserialize;
+use env_logger::Env;
+use futures_util::FutureExt;
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use tokio::time::sleep;
 
@@ -43,7 +45,7 @@ async fn post(body: Json<TestPathInfo>, query: Query<QueryData>) -> impl Respond
     HttpResponse::Ok().body(x)
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 struct TestPathInfo {
     user_id: u32,
     name: String,
@@ -78,8 +80,19 @@ async fn main() -> std::io::Result<()> {
         app_name: String::from("Actix LOLLOL"),
     });
 
+    env_logger::init_from_env(Env::default().default_filter_or("info"));
+
     HttpServer::new(move || {
         App::new()
+            .wrap(Logger::default())
+            .wrap_fn(|req, srv| {
+                println!(
+                    "DATADOG: {} {:?}",
+                    req.method(),
+                    req.match_pattern()
+                );
+                srv.call(req)
+            })
             .app_data(app_state.clone())
             .service(hello)
             .service(test)
